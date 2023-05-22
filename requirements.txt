@@ -1,0 +1,5 @@
+argparse
+configparser
+openai
+plyer
+pyobjus
