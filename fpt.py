@@ -233,6 +233,41 @@ def generate_filename(archive_directory):
     new_filename = f"{today}-ai{seq_number}.md"
     return new_filename
 
+def format_headless_thread_content(sections):
+    content = ''
+    for i, section in enumerate(sections):
+        if i % 2 == 0:
+            content += add_md_blockquote_if_not_present(section) + '\n\n----\n\n'
+        else:
+            content += section + '\n\n----\n\n'
+    return content
+
+# headless mode
+def headless_mode():
+    global usage_history_file
+    global args
+    global prepend_history
+    sections = []
+    print('Headless mode: fpt is not currently attached to a file.\nType your question after the > prompt, type q to save and quit.\nSave location: {}'.format(usage_history_file))
+    while True:
+        print('> ', end='')
+        user_input = input()
+        if user_input == 'q':
+            if len(sections) == 0:
+                exit()
+            content_to_write = format_headless_thread_content(sections)
+            if prepend_history:
+                prepend_to_file(usage_history_file, content_to_write)
+            else:
+                append_to_file(usage_history_file, content_to_write)
+            exit()
+        else:
+            sections.append(user_input)
+            messages = construct_messages_from_sections(sections)
+            response, _, _, _ = sendToGPT(messages, args.gpt4)
+            print(response)
+            sections.append(response)
+
 # interactive mode
 def interactive_mode():
     global usage_history_file
@@ -336,7 +371,7 @@ parser = argparse.ArgumentParser(
     prog='fpt',
     description='A CLI for OpenAI\'s GPT-3.5/GPT-4 API',
 )
-input_group = parser.add_mutually_exclusive_group(required=True)
+input_group = parser.add_mutually_exclusive_group()
 input_group.add_argument('-f', '--file', type=str, help='The file to operate on')
 input_group.add_argument('-q', '--question', type=str, help='A single question to send to GPT')
 parser.add_argument('-4', '--gpt4', action='store_true', help='Use GPT-4')
@@ -402,3 +437,7 @@ elif args.file:
     else:
         print('Error: invalid file type. Exiting...')
         exit()
+
+# if the user didn't specify a file or a question, enter headless interactive mode
+else:
+    headless_mode()
