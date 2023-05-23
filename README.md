@@ -11,7 +11,7 @@ Use your own OpenAI API key or reverse endpoint to access GPT-3.5 or GPT-4 on th
 - **Fast**: since fpt is a command line tool, you don't need to deal with the sluggish Web interface anymore. Say goodbye to logging in again and again on the website, waiting for the page to load, and navigating through the UI.
 - **Cheap**: an average gpt-3.5 request could cost about $0.001, and you can save more by asking single questions with `fpt -q` or avoiding long threads.
 - **GPT-4**: you can use GPT-4 without paying $20/month for ChatGPT Plus. An average gpt-4 request could cost about $0.015.
-- **Custom Endpoints**: save more money if you have a custom OpenAI endpoint. **Highly recommended for heavy GPT-4 users.** There are many way better deals out there utilizing a custom endpoint, some with free gpt-4 caps even higher than the $20/month ChatGPT Plus plan.
+- **Custom Endpoints**: use your custom OpenAI endpoint. **Use custom endpoints at your own discretion.**
 - **Notification**: a typical GPT-4 request could take half a minute to a minute to complete. When a request finishes, you'll get a system notification (Supported on Window, macOS, and Linux) and a notification sound. On by default.
 
 ## Quickstart
