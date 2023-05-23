@@ -331,11 +331,6 @@ def interactive_mode():
                 response, _, _, _ = sendToGPT(messages, args.gpt4)
                 append_message_to_file(response, args.file, 'response')
 
-# test area
-testing = False
-if testing:
-    exit()
-
 # parse the command line arguments
 parser = argparse.ArgumentParser(
     prog='fpt',
