@@ -8,6 +8,7 @@ import shutil
 import time
 from plyer import notification
 import platform
+import threading
 
 def play_sound(sound_file_path):
     system = platform.system()
@@ -67,7 +68,8 @@ def sendToGPT(messages, is_gpt_4):
     if args.verbose or config.getboolean('Options', 'show_tokens'):
         print("[gpt-cli] Request finished. Model: {}, took {:.2f} seconds. Used tokens: {} ({} prompt + {} response). Calculated cost: {:.2f} cents".format(model, end_time - start_time, total_tokens, prompt_tokens, completion_tokens, spent_cents))
     if config.getboolean('Options', 'notifications'):
-        send_notification(end_time - start_time, model)
+        notification_thread = threading.Thread(target=send_notification, args=(end_time - start_time, model))
+        notification_thread.start()
     return text, prompt_tokens, completion_tokens, total_tokens
 
 # function to insert "> " in front of each line in a string (markdown blockquote)
