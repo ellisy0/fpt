@@ -216,6 +216,8 @@ def file_type_check_get_messages(file):
             blockquote_last_message(file)
             return "valid_ends_with_prompt", sections
     else:
+        if content == '' or content.isspace():
+            return "empty", []
         blockquote_file(file)
         return "plain", [remove_md_blockquote_if_present(content)]
 
@@ -291,7 +293,9 @@ def interactive_mode():
             else:
                 is_gpt_4 = args.gpt4
             type, sections = file_type_check_get_messages(args.file)
-            if type == "invalid_ordering":
+            if type == "empty":
+                print('The file is empty. Please type your question.')
+            elif type == "invalid_ordering":
                 print('Invalid ordering in the file. Please check the file and try again.')
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. Please ask a question at the end of thread.')
@@ -423,7 +427,10 @@ elif args.file:
         print('Error: file does not exist. Exiting...')
         exit()
     type, sections = file_type_check_get_messages(args.file)
-    if type == 'invalid_ordering':
+    if type == 'empty':
+        print('File is empty. Entering interactive mode...')
+        interactive_mode()
+    elif type == 'invalid_ordering':
         print('Error: invalid ordering of messages. Make sure there are alternating prompts and responses. Exiting...')
         exit()
     elif type == 'valid_ends_with_response':
