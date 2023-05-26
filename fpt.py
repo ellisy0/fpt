@@ -9,6 +9,8 @@ import time
 from plyer import notification
 import platform
 import threading
+from rich import print
+from rich.markdown import Markdown
 
 def play_sound(sound_file_path):
     system = platform.system()
@@ -66,7 +68,7 @@ def sendToGPT(messages, is_gpt_4):
     end_time = time.time()
     spent_cents = total_tokens * price_rate / 10
     if args.verbose or config.getboolean('Options', 'show_tokens'):
-        print("[gpt-cli] Request finished. Model: {}, took {:.2f} seconds. Used tokens: {} ({} prompt + {} response). Calculated cost: {:.2f} cents".format(model, end_time - start_time, total_tokens, prompt_tokens, completion_tokens, spent_cents))
+        print(f"[dim]\[gpt-cli] Request finished. Model: [bold cyan]{model}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if config.getboolean('Options', 'notifications'):
         notification_thread = threading.Thread(target=send_notification, args=(end_time - start_time, model))
         notification_thread.start()
@@ -253,7 +255,7 @@ def headless_mode():
     print('Headless mode: fpt is not currently attached to a file.\nType your question after the > prompt, type q to save and quit.\nSave location: {}'.format(usage_history_file))
     while True:
         print('> ', end='')
-        user_input = input()
+        user_input = user_input = input("\033[32m")
         if user_input == 'q':
             if len(sections) == 0:
                 exit()
@@ -267,7 +269,7 @@ def headless_mode():
             sections.append(user_input)
             messages = construct_messages_from_sections(sections)
             response, _, _, _ = sendToGPT(messages, args.gpt4)
-            print(response)
+            print(Markdown(response))
             sections.append(response)
 
 # interactive mode
@@ -414,7 +416,7 @@ if not os.path.exists(usage_history_file):
 if args.question:
     messages = construct_messages_from_sections([args.question])
     response, _, _, _ = sendToGPT(messages, is_gpt_4=args.gpt4)
-    print(response)
+    print(Markdown(response))
     content_to_write = add_md_blockquote_if_not_present(args.question) + '\n\n----\n\n' + response + '\n\n----\n\n'
     if prepend_history:
         prepend_to_file(usage_history_file, content_to_write)

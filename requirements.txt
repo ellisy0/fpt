@@ -3,3 +3,4 @@ configparser
 openai
 plyer
 pyobjus
+rich
