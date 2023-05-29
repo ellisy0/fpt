@@ -35,7 +35,31 @@ def send_notification(secs_taken, model_name):
     )
     play_sound("notification.wav")
 
+def process_latex(content):
+    # Regex patterns for inline and non-inline LaTeX
+    inline_pattern = r'\$(.+?)\$'
+    non_inline_pattern = r'\$\$([\s\S]*?)\$\$'
+
+    # Function to add a \ before every \ and wrap with inline code and $
+    def replace_inline(match):
+        return r'`$' + match.group(1) + r'$`'
+
+    # Function to add a \ before every \ and wrap with code block and $$
+    def replace_non_inline(match):
+        return '```latex\n$$' + match.group(1) + '$$\n```'
+
+    # Replace inline LaTeX with wrapped inline code
+    content = re.sub(inline_pattern, replace_inline, content)
+
+    # Replace non-inline LaTeX with wrapped code block
+    content = re.sub(non_inline_pattern, replace_non_inline, content)
+
+    return content
+
 def render_markdown_with_tables(markdown_string):
+    # Process LaTeX in the input string
+    markdown_string = process_latex(markdown_string)
+    
     # Split input into lines
     lines = markdown_string.strip().split('\n')
 
