@@ -30,7 +30,7 @@ def send_notification(secs_taken, model_name):
     notification.notify(
         title='Request Finished!',
         message='Took {:.2f} seconds. Model: {}'.format(secs_taken, model_name),
-        app_name='gpt-cli',
+        app_name='fpt',
         timeout=10
     )
     play_sound("notification.wav")
@@ -59,7 +59,7 @@ def process_latex(content):
 def render_markdown_with_tables(markdown_string):
     # Process LaTeX in the input string
     markdown_string = process_latex(markdown_string)
-    
+
     # Split input into lines
     lines = markdown_string.strip().split('\n')
 
@@ -167,7 +167,7 @@ def sendToGPT(messages, is_gpt_4):
     end_time = time.time()
     spent_cents = total_tokens * price_rate / 10
     if args.verbose or config.getboolean('Options', 'show_tokens'):
-        print(f"[dim]\[gpt-cli] Request finished. Model: [bold cyan]{model}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
+        print(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if config.getboolean('Options', 'notifications'):
         notification_thread = threading.Thread(target=send_notification, args=(end_time - start_time, model))
         notification_thread.start()
@@ -351,7 +351,10 @@ def headless_mode():
     global args
     global prepend_history
     sections = []
-    print('Headless mode: fpt is not currently attached to a file.\nType your question after the > prompt, type q to save and quit.\nSave location: {}'.format(usage_history_file))
+    target_file = generate_filename(archive_directory)
+    target_file = os.path.join(archive_directory, target_file)
+    config_file = os.path.join(os.getcwd(), 'fpt.conf')
+    print('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
     while True:
         print('> ', end='')
         user_input = user_input = input("\033[32m")
@@ -363,6 +366,13 @@ def headless_mode():
                 prepend_to_file(usage_history_file, content_to_write)
             else:
                 append_to_file(usage_history_file, content_to_write)
+            exit()
+        elif user_input == 'qf':
+            if len(sections) == 0:
+                exit()
+            content_to_write = format_headless_thread_content(sections)
+            with open(target_file, 'w') as f:
+                f.write(content_to_write)
             exit()
         else:
             sections.append(user_input)
