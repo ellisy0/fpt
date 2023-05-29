@@ -11,6 +11,7 @@ import platform
 import threading
 from rich import print
 from rich.markdown import Markdown
+from rich.table import Table
 
 def play_sound(sound_file_path):
     system = platform.system()
@@ -33,6 +34,80 @@ def send_notification(secs_taken, model_name):
         timeout=10
     )
     play_sound("notification.wav")
+
+def render_markdown_with_tables(markdown_string):
+    # Split input into lines
+    lines = markdown_string.strip().split('\n')
+
+    # Initialize variables
+    in_table = False
+    current_table_data = []
+    current_table_header = []
+    current_table_justifications = []
+    non_table_content = []
+
+    # Iterate through lines
+    for line in lines:
+        if re.match(r'\|\s*[^\s]', line) and not in_table:  # Check if line starts a table
+            in_table = True
+            
+            # Print previous non-table content
+            if non_table_content:
+                print(Markdown('\n'.join(non_table_content)))
+                non_table_content = []
+
+            header_line = re.split(r'\s*\|\s*', line.strip())[1:-1]
+            current_table_header = header_line
+        elif in_table and re.match(r'\|\s*:?-+:?\s*\|', line) and not current_table_justifications:  # Check if line is a table separator
+            justifications_line = re.split(r'\s*\|\s*', line.strip())[1:-1]
+            current_table_justifications = [get_justification(j) for j in justifications_line]
+            if len(current_table_header) != len(current_table_justifications):
+                current_table_justifications = ['left'] * len(current_table_header)  # Default to left alignment if not specified
+        elif in_table and re.match(r'\|', line):  # Check if line is a table row
+            row_line = re.split(r'\s*\|\s*', line.strip())[1:-1]
+            current_table_data.append(row_line)
+        else:
+            # Save non-table content
+            non_table_content.append(line)
+
+            # Print table if it exists
+            if in_table:
+                table = Table()
+                for idx, header in enumerate(current_table_header):
+                    table.add_column(header, justify=current_table_justifications[idx])
+
+                for row_data in current_table_data:
+                    table.add_row(*row_data)
+
+                print(table)
+                # Reset table variables
+                in_table = False
+                current_table_data = []
+                current_table_header = []
+                current_table_justifications = []
+
+    # Print the last table if it exists
+    if in_table:
+        table = Table()
+        for idx, header in enumerate(current_table_header):
+            table.add_column(header, justify=current_table_justifications[idx])
+
+        for row_data in current_table_data:
+            table.add_row(*row_data)
+
+        print(table)
+
+    # Print remaining non-table content
+    if non_table_content:
+        print(Markdown('\n'.join(non_table_content)))
+
+def get_justification(j_line):
+    if j_line.startswith(':') and j_line.endswith(':'):
+        return 'center'
+    elif j_line.startswith(':'):
+        return 'left'
+    else:
+        return 'right'
 
 # convert a list of strings into messages, including custom prompts
 def construct_messages_from_sections(sections):
@@ -269,7 +344,7 @@ def headless_mode():
             sections.append(user_input)
             messages = construct_messages_from_sections(sections)
             response, _, _, _ = sendToGPT(messages, args.gpt4)
-            print(Markdown(response))
+            render_markdown_with_tables(response)
             sections.append(response)
 
 # interactive mode
@@ -416,7 +491,7 @@ if not os.path.exists(usage_history_file):
 if args.question:
     messages = construct_messages_from_sections([args.question])
     response, _, _, _ = sendToGPT(messages, is_gpt_4=args.gpt4)
-    print(Markdown(response))
+    render_markdown_with_tables(response)
     content_to_write = add_md_blockquote_if_not_present(args.question) + '\n\n----\n\n' + response + '\n\n----\n\n'
     if prepend_history:
         prepend_to_file(usage_history_file, content_to_write)
