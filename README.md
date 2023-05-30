@@ -1,13 +1,18 @@
 # fpt: File-based Prompt Tool with GPT-3.5/4 (CLI)
 
-Use your own OpenAI API key or reverse endpoint to access GPT-3.5 or GPT-4 on the command line, centered around local files. Chat history will be all saved on your local machine by design, all in plain text files.
+Use your own OpenAI API key or reverse endpoint to access GPT-3.5 or GPT-4 on the command line, centered around local files. Chat history will be all saved on your local machine by design, all in plain text, human-readable markdown files.
 
-- **Headless**: `fpt` to interactively ask questions and get responses. `q` to save and quit.
+![fpt demo](./demo-1.png)
+
+You can run `fpt` in three modes:
+
+- **Headless**: Simply use the `fpt` command to interactively ask questions and get responses. Markdown formatting in the responses will be formatted to the console, including code blocks and tables. `q` or `qf` to save and quit.
 - **Headless, single question**: e.g. `fpt -q "What is the Alcubierre drive?"`. Single question, single response, automatically saved to `./archive/usage_history.md` (configurable). Useful for saving a lot of token costs by reducing context.
 - **Attached mode**: e.g. type the question you want to ask in `thread_scratchpad.md` (an empty file is provided), then `fpt -f thread_scratchpad.md`. Answers will be appended to the file, you can ask following questions by typing in the file, saving the file, and using the `f` command, or ask directly on the command line. Use the `d` or `df` command to clear the file and save the conversation to `./archive/` (configurable).
 
 ## Why?
 
+- **Formatted Markdown on the console**: render **bold**, *italic*, `code`, lists, and tables in the replies on the console.
 - **Local Chat History**: you'll own your chat history in plain text, you can search through previous conversations much faster.
 - **Fast**: since fpt is a command line tool, you don't need to deal with the sluggish Web interface anymore. Say goodbye to logging in again and again on the website, waiting for the page to load, and navigating through the UI.
 - **Cheap**: an average gpt-3.5 request could cost about $0.001, and you can save more by asking single questions with `fpt -q` or avoiding long threads.
@@ -69,6 +74,12 @@ You don't really need to worry much about the file format, but if you are curiou
 - I wrote this tool for myself, and I've been using it as my primary way to interact with AI chatbots for 2 months before releasing it to GitHub. A lot of changes and design choices slowly and organically took place during these two months.
 - I tested it by using it. This should work on Windows, macOS, and Linux, but I've been primarily using it on macOS. Feel free to open an issue if you encounter any problems and I'll be happy to fix it!
 - Why Python: Python has an officially maintained openai package that I can use. Besides, the speed of Python is good enough for this use case since the API calls are by far the slowest part of the program.
+
+## Screenshots
+
+Code rendering on the console:
+
+![fpt demo code render](./demo-2.png)
 
 ## License
 
