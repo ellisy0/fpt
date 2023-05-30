@@ -128,10 +128,10 @@ def render_markdown_with_tables(markdown_string):
 def get_justification(j_line):
     if j_line.startswith(':') and j_line.endswith(':'):
         return 'center'
-    elif j_line.startswith(':'):
-        return 'left'
-    else:
+    elif j_line.endswith(':'):
         return 'right'
+    else:
+        return 'left'
 
 # convert a list of strings into messages, including custom prompts
 def construct_messages_from_sections(sections):
