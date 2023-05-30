@@ -147,8 +147,28 @@ def construct_messages_from_sections(sections):
             messages.append({"role": "assistant", "content": section})
     return messages
 
+def sendToGPT(sections, is_gpt_4, fail_save=False):
+    global archive_directory
+    messages = construct_messages_from_sections(sections)
+    target_file = generate_filename(archive_directory)
+    target_file = os.path.join(archive_directory, target_file)
+    try:
+        return GPTRequest(messages, is_gpt_4)
+    except openai.error.APIError as api_err:
+        print("An API Error occured: {}".format(api_err))
+        if fail_save:
+            print("Saving the unfinished thread to {}...".format(target_file))
+            write_sections_to_file(sections, target_file)
+        exit()
+    except openai.error.Timeout as timeout_err:
+        print("Request timed out: {}".format(timeout_err))
+        if fail_save:
+            print("Saving the unfinished thread to {}...".format(target_file))
+            write_sections_to_file(sections, target_file)
+        exit()
+
 # send messages to GPT and return the response
-def sendToGPT(messages, is_gpt_4):
+def GPTRequest(messages, is_gpt_4):
     global args
     if is_gpt_4:
         model = "gpt-4"
@@ -251,6 +271,17 @@ def remove_last_message_from_file(file):
         content = '\n\n----\n\n'.join(sections)
         with open(file, 'w') as f:
             f.write(content + '\n\n----\n\n')
+
+def write_sections_to_file(sections, file):
+    for i, section in enumerate(sections):
+        if i % 2 == 0:
+            section = add_md_blockquote_if_not_present(section)
+        else:
+            section = remove_md_blockquote_if_present(section)
+        sections[i] = section
+    content = '\n\n----\n\n'.join(sections)
+    with open(file, 'w') as f:
+        f.write(content)
 
 # assuming the format is correct, and the last message is a prompt, blockquote the last message
 def blockquote_last_message(file):
@@ -376,8 +407,7 @@ def headless_mode():
             exit()
         else:
             sections.append(user_input)
-            messages = construct_messages_from_sections(sections)
-            response, _, _, _ = sendToGPT(messages, args.gpt4)
+            response, _, _, _ = sendToGPT(sections, args.gpt4)
             render_markdown_with_tables(response)
             sections.append(response)
 
@@ -411,8 +441,7 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. Please ask a question at the end of thread.')
             else:
-                messages = construct_messages_from_sections(sections)
-                response, _, _, _ = sendToGPT(messages, is_gpt_4)
+                response, _, _, _ = sendToGPT(sections, is_gpt_4)
                 append_message_to_file(response, args.file, 'response')
         elif user_input == 'r' or user_input == 'r3' or user_input == 'r4':
             if user_input == 'r3':
@@ -428,8 +457,7 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. This shouldn\'t happen...')
             else:
-                messages = construct_messages_from_sections(sections)
-                response, _, _, _ = sendToGPT(messages, is_gpt_4)
+                response, _, _, _ = sendToGPT(sections, is_gpt_4)
                 append_message_to_file(response, args.file, 'response')
         elif user_input == 'o' or user_input == 'o3' or user_input == 'o4':
             if user_input == 'o3':
@@ -444,8 +472,7 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. Please ask a question at the end of thread.')
             else:
-                messages = construct_messages_from_sections([sections[-1]])
-                response, _, _, _ = sendToGPT(messages, is_gpt_4)
+                response, _, _, _ = sendToGPT([sections[-1]], is_gpt_4)
                 append_message_to_file(response, args.file, 'response')
         elif user_input == 'd' or user_input == 'df':
             if user_input == 'd':
@@ -477,8 +504,7 @@ def interactive_mode():
             else:
                 append_message_to_file(user_input, args.file, 'prompt')
                 sections.append(user_input)
-                messages = construct_messages_from_sections(sections)
-                response, _, _, _ = sendToGPT(messages, args.gpt4)
+                response, _, _, _ = sendToGPT(sections, args.gpt4)
                 append_message_to_file(response, args.file, 'response')
 
 # parse the command line arguments
@@ -523,8 +549,7 @@ if not os.path.exists(usage_history_file):
 
 # if the user asked a single question, answer it, save the response, and exit
 if args.question:
-    messages = construct_messages_from_sections([args.question])
-    response, _, _, _ = sendToGPT(messages, is_gpt_4=args.gpt4)
+    response, _, _, _ = sendToGPT([args.question], is_gpt_4=args.gpt4)
     render_markdown_with_tables(response)
     content_to_write = add_md_blockquote_if_not_present(args.question) + '\n\n----\n\n' + response + '\n\n----\n\n'
     if prepend_history:
@@ -548,8 +573,7 @@ elif args.file:
         print('File ends with a response. Entering interactive mode...')
         interactive_mode()
     elif type == 'valid_ends_with_prompt' or type == 'plain':
-        messages = construct_messages_from_sections(sections)
-        response, _, _, _ = sendToGPT(messages, is_gpt_4=args.gpt4)
+        response, _, _, _ = sendToGPT(sections, is_gpt_4=args.gpt4)
         append_message_to_file(response, args.file, 'response')
         interactive_mode()
     else:
