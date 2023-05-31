@@ -81,6 +81,10 @@ Code rendering on the console:
 
 ![fpt demo code render](./demo-2.png)
 
+Looking up commands in the CLI, on the fly:
+
+![fpt useful for looking up commands in the cli](./demo-3.png)
+
 ## License
 
 MIT
