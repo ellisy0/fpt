@@ -154,11 +154,13 @@ def sendToGPT(sections, is_gpt_4, fail_save=False):
     target_file = os.path.join(archive_directory, target_file)
     try:
         return GPTRequest(messages, is_gpt_4)
-    except (openai.error.Timeout, openai.error.APIError) as e:
+    except (openai.error.Timeout, openai.error.APIError, openai.error.APIConnectionError, KeyboardInterrupt) as e:
         print(e)
-        if fail_save:
-            print("Saving the unfinished thread to {}...".format(target_file))
+        if type(e) == KeyboardInterrupt:
+            print("Gracefully exiting...")
+        if fail_save and len(sections) > 2:
             write_sections_to_file(sections, target_file)
+            print("There was an error during the last request. Saved the unfinished thread to {} as backup.".format(target_file))
         exit()
 
 # send messages to GPT and return the response
@@ -398,6 +400,7 @@ def headless_mode():
             content_to_write = format_headless_thread_content(sections)
             with open(target_file, 'w') as f:
                 f.write(content_to_write)
+            print('Saved thread to {}'.format(target_file))
             exit()
         else:
             sections.append(user_input)
