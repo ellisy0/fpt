@@ -12,6 +12,16 @@ import threading
 from rich import print
 from rich.markdown import Markdown
 from rich.table import Table
+import platform
+import sys
+if platform.system() == "Windows":
+    try:
+        import pyreadline as readline
+    except ImportError:
+        print("Please install pyreadline using: pip install pyreadline")
+        sys.exit(1)
+else:
+    import readline
 
 def play_sound(sound_file_path):
     system = platform.system()
