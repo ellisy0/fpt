@@ -9,7 +9,7 @@ import time
 from plyer import notification
 import platform
 import threading
-from rich import print
+from rich import print as rprint
 from rich.markdown import Markdown
 from rich.table import Table
 import platform
@@ -170,7 +170,7 @@ def sendToGPT(sections, is_gpt_4, fail_save=False):
             print("Gracefully exiting...")
         if fail_save and len(sections) > 2:
             write_sections_to_file(sections, target_file)
-            print("There was an error during the last request. Saved the unfinished thread to {} as backup.".format(target_file))
+            rprint("There was an error during the last request. Saved the unfinished thread to {} as backup.".format(target_file))
         exit()
 
 # send messages to GPT and return the response
@@ -186,7 +186,7 @@ def GPTRequest(messages, is_gpt_4):
         price_rate_output = 0.002
     start_time = time.time()
     if args.verbose:
-        print("Verbose: sending request using {}, messages = {}".format(model, messages))
+        rprint("Verbose: sending request using {}, messages = {}".format(model, messages))
     response = openai.ChatCompletion.create(model=model, messages = messages)
     text = response["choices"][0]["message"]["content"]
     prompt_tokens = response["usage"]["prompt_tokens"]
@@ -195,11 +195,47 @@ def GPTRequest(messages, is_gpt_4):
     end_time = time.time()
     spent_cents = (prompt_tokens * price_rate_input + completion_tokens * price_rate_output) / 10
     if args.verbose or config.getboolean('Options', 'show_tokens'):
-        print(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
+        rprint(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if config.getboolean('Options', 'notifications'):
         notification_thread = threading.Thread(target=send_notification, args=(end_time - start_time, model))
         notification_thread.start()
     return text, prompt_tokens, completion_tokens, total_tokens
+
+def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
+    if is_gpt_4:
+        model = "gpt-4-0613"
+    else:
+        model = "gpt-3.5-turbo-0613"
+    messages = construct_messages_from_sections(sections)
+    response_text = ""
+    if file:
+        reformat_end_of_file(file)
+
+    start_time = time.time()
+    response = openai.ChatCompletion.create(
+        model = model,
+        messages = messages,
+        stream = True,
+    )
+    for chunk in response:
+        if chunk["choices"][0]["finish_reason"] == "stop":
+            if not file:
+                print("")
+            break
+        chunk_text = chunk["choices"][0]["delta"]["content"]
+        if file:
+            with open(file, 'a') as f:
+                f.write(chunk_text)
+        else:
+            print(chunk_text, end="")
+        response_text += chunk_text
+
+    end_time = time.time()
+    if args.verbose or config.getboolean('Options', 'show_tokens'):
+        rprint(f"[dim]\[fpt] Stream request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds.")
+    if file:
+        reformat_end_of_file(file)
+    return response_text
 
 # function to insert "> " in front of each line in a string (markdown blockquote)
 def insert_gt(string):
@@ -389,14 +425,16 @@ def headless_mode():
     global usage_history_file
     global args
     global prepend_history
+    global stream
     sections = []
     target_file = generate_filename(archive_directory)
     target_file = os.path.join(archive_directory, target_file)
     config_file = os.path.join(os.getcwd(), 'fpt.conf')
-    print('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
+    rprint('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
     while True:
         print('> ', end='')
         user_input = input("\033[32m")
+        print("\033[0m", end='')
         if user_input == 'q':
             if len(sections) == 0:
                 exit()
@@ -416,17 +454,22 @@ def headless_mode():
             exit()
         else:
             sections.append(user_input)
-            response, _, _, _ = sendToGPT(sections, args.gpt4, fail_save=True)
-            render_markdown_with_tables(response)
+            if stream:
+                response = stream_to_stdout_or_file(sections, is_gpt_4=args.gpt4)
+            else:
+                response, _, _, _ = sendToGPT(sections, args.gpt4, fail_save=True)
+                render_markdown_with_tables(response)
             sections.append(response)
 
 # interactive mode
 def interactive_mode():
     global usage_history_file
     global args
+    global stream
     while True:
         print('Type the next question or command, h for help: ', end='')
         user_input = input("\033[32m")
+        print("\033[0m", end='')
         if user_input == 'h':
             print('f: read next question from file. f3 to force GPT-3.5, f4 to force GPT-4')
             print('r: re-generate the last response. r3 to force GPT-3.5, r4 to force GPT-4')
@@ -450,8 +493,11 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. Please ask a question at the end of thread.')
             else:
-                response, _, _, _ = sendToGPT(sections, is_gpt_4)
-                append_message_to_file(response, args.file, 'response')
+                if stream:
+                    stream_to_stdout_or_file(sections, is_gpt_4, args.file)
+                else:
+                    response, _, _, _ = sendToGPT(sections, is_gpt_4)
+                    append_message_to_file(response, args.file, 'response')
         elif user_input == 'r' or user_input == 'r3' or user_input == 'r4':
             if user_input == 'r3':
                 is_gpt_4 = False
@@ -466,8 +512,11 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. This shouldn\'t happen...')
             else:
-                response, _, _, _ = sendToGPT(sections, is_gpt_4)
-                append_message_to_file(response, args.file, 'response')
+                if stream:
+                    stream_to_stdout_or_file(sections, is_gpt_4, args.file)
+                else:
+                    response, _, _, _ = sendToGPT(sections, is_gpt_4)
+                    append_message_to_file(response, args.file, 'response')
         elif user_input == 'o' or user_input == 'o3' or user_input == 'o4':
             if user_input == 'o3':
                 is_gpt_4 = False
@@ -481,8 +530,11 @@ def interactive_mode():
             elif type == "valid_ends_with_response":
                 print('The file ends with a response. Please ask a question at the end of thread.')
             else:
-                response, _, _, _ = sendToGPT([sections[-1]], is_gpt_4)
-                append_message_to_file(response, args.file, 'response')
+                if stream:
+                    stream_to_stdout_or_file(sections, is_gpt_4, args.file)
+                else:
+                    response, _, _, _ = sendToGPT([sections[-1]], is_gpt_4)
+                    append_message_to_file(response, args.file, 'response')
         elif user_input == 'd' or user_input == 'df':
             if user_input == 'd':
                 target_file = usage_history_file
@@ -512,8 +564,11 @@ def interactive_mode():
             else:
                 append_message_to_file(user_input, args.file, 'prompt')
                 sections.append(user_input)
-                response, _, _, _ = sendToGPT(sections, args.gpt4)
-                append_message_to_file(response, args.file, 'response')
+                if stream:
+                    stream_to_stdout_or_file(sections, args.gpt4, args.file)
+                else:
+                    response, _, _, _ = sendToGPT(sections, args.gpt4)
+                    append_message_to_file(response, args.file, 'response')
 
 # parse the command line arguments
 parser = argparse.ArgumentParser(
@@ -545,6 +600,7 @@ else:
 archive_directory = config.get('Directories', 'archive_directory')
 usage_history_file = config.get('Directories', 'usage_history_file')
 prepend_history = config.getboolean('Options', 'prepend_history')
+stream = config.getboolean('Options', 'stream')
 
 # set the API key
 openai.api_key = api_key
@@ -557,8 +613,11 @@ if not os.path.exists(usage_history_file):
 
 # if the user asked a single question, answer it, save the response, and exit
 if args.question:
-    response, _, _, _ = sendToGPT([args.question], is_gpt_4=args.gpt4)
-    render_markdown_with_tables(response)
+    if stream:
+        response = stream_to_stdout_or_file([args.question], is_gpt_4=args.gpt4)
+    else:
+        response, _, _, _ = sendToGPT([args.question], is_gpt_4=args.gpt4)
+        render_markdown_with_tables(response)
     content_to_write = add_md_blockquote_if_not_present(args.question) + '\n\n----\n\n' + response + '\n\n----\n\n'
     if prepend_history:
         prepend_to_file(usage_history_file, content_to_write)
@@ -581,8 +640,11 @@ elif args.file:
         print('File ends with a response. Entering interactive mode...')
         interactive_mode()
     elif type == 'valid_ends_with_prompt' or type == 'plain':
-        response, _, _, _ = sendToGPT(sections, is_gpt_4=args.gpt4)
-        append_message_to_file(response, args.file, 'response')
+        if stream:
+            stream_to_stdout_or_file(sections, is_gpt_4=args.gpt4, file=args.file)
+        else:
+            response, _, _, _ = sendToGPT(sections, is_gpt_4=args.gpt4)
+            append_message_to_file(response, args.file, 'response')
         interactive_mode()
     else:
         print('Error: invalid file type. Exiting...')
