@@ -178,10 +178,12 @@ def GPTRequest(messages, is_gpt_4):
     global args
     if is_gpt_4:
         model = "gpt-4-0613"
-        price_rate = 0.03
+        price_rate_input = 0.03
+        price_rate_output = 0.06
     else:
         model = "gpt-3.5-turbo-0613"
-        price_rate = 0.002
+        price_rate_input = 0.0015
+        price_rate_output = 0.002
     start_time = time.time()
     if args.verbose:
         print("Verbose: sending request using {}, messages = {}".format(model, messages))
@@ -191,7 +193,7 @@ def GPTRequest(messages, is_gpt_4):
     completion_tokens = response["usage"]["completion_tokens"]
     total_tokens = response["usage"]["total_tokens"]
     end_time = time.time()
-    spent_cents = total_tokens * price_rate / 10
+    spent_cents = (prompt_tokens * price_rate_input + completion_tokens * price_rate_output) / 10
     if args.verbose or config.getboolean('Options', 'show_tokens'):
         print(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if config.getboolean('Options', 'notifications'):
@@ -394,7 +396,7 @@ def headless_mode():
     print('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
     while True:
         print('> ', end='')
-        user_input = user_input = input("\033[32m")
+        user_input = input("\033[32m")
         if user_input == 'q':
             if len(sections) == 0:
                 exit()
