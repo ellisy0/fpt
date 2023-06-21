@@ -177,10 +177,10 @@ def sendToGPT(sections, is_gpt_4, fail_save=False):
 def GPTRequest(messages, is_gpt_4):
     global args
     if is_gpt_4:
-        model = "gpt-4"
+        model = "gpt-4-0613"
         price_rate = 0.03
     else:
-        model = "gpt-3.5-turbo"
+        model = "gpt-3.5-turbo-0613"
         price_rate = 0.002
     start_time = time.time()
     if args.verbose:
