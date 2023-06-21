@@ -195,7 +195,7 @@ def GPTRequest(messages, is_gpt_4):
     end_time = time.time()
     spent_cents = (prompt_tokens * price_rate_input + completion_tokens * price_rate_output) / 10
     if args.verbose or config.getboolean('Options', 'show_tokens'):
-        print(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
+        print(f"[dim]\[fpt] Request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if config.getboolean('Options', 'notifications'):
         notification_thread = threading.Thread(target=send_notification, args=(end_time - start_time, model))
         notification_thread.start()
