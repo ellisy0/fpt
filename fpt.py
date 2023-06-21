@@ -426,7 +426,7 @@ def interactive_mode():
     global args
     while True:
         print('Type the next question or command, h for help: ', end='')
-        user_input = input()
+        user_input = input("\033[32m")
         if user_input == 'h':
             print('f: read next question from file. f3 to force GPT-3.5, f4 to force GPT-4')
             print('r: re-generate the last response. r3 to force GPT-3.5, r4 to force GPT-4')
@@ -498,9 +498,8 @@ def interactive_mode():
                 shutil.copy(args.file, target_file)
             with open(args.file, 'w') as f:
                 f.write('')
-            print('Cleared the current file and archived the cleared thread to {}.'.format(target_file))
+            print('Cleared the current file and archived the cleared thread to {}'.format(target_file))
         elif user_input == 'q':
-            print('Quitting the program...')
             exit()
         else:
             type, sections = file_type_check_get_messages(args.file)
