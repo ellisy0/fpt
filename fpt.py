@@ -12,6 +12,7 @@ import threading
 from rich import print as rprint
 from rich.markdown import Markdown
 from rich.table import Table
+import tiktoken
 import platform
 import sys
 if platform.system() == "Windows":
@@ -22,6 +23,41 @@ if platform.system() == "Windows":
         sys.exit(1)
 else:
     import readline
+
+def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
+    """Returns the number of tokens used by a list of messages."""
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        print("Warning: model not found. Using cl100k_base encoding.")
+        encoding = tiktoken.get_encoding("cl100k_base")
+    if model == "gpt-3.5-turbo":
+        print("Warning: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
+        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
+    elif model == "gpt-3.5-turbo-16k":
+        print("Warning: gpt-3.5-turbo-16k may change over time. Returning num tokens assuming gpt-3.5-turbo-16k-0613.")
+        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-16k-0613")
+    elif model == "gpt-4":
+        print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
+        return num_tokens_from_messages(messages, model="gpt-4-0314")
+    elif model == "gpt-3.5-turbo-0301":
+        tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
+        tokens_per_name = -1  # if there's a name, the role is omitted
+    elif model in {"gpt-4-0314", "gpt-4-0613", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k-0613"}:
+        tokens_per_message = 3
+        tokens_per_name = 1
+    
+    else:
+        raise NotImplementedError(f"""num_tokens_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens.""")
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+            if key == "name":
+                num_tokens += tokens_per_name
+    num_tokens += 3  # every reply is primed with <|start|>assistant<|message|>
+    return num_tokens
 
 def play_sound(sound_file_path):
     system = platform.system()
@@ -187,7 +223,7 @@ def GPTRequest(messages, is_gpt_4):
     start_time = time.time()
     if args.verbose:
         rprint("Verbose: sending request using {}, messages = {}".format(model, messages))
-    response = openai.ChatCompletion.create(model=model, messages = messages)
+    response = openai.ChatCompletion.create(model = model, messages = messages)
     text = response["choices"][0]["message"]["content"]
     prompt_tokens = response["usage"]["prompt_tokens"]
     completion_tokens = response["usage"]["completion_tokens"]
@@ -204,9 +240,14 @@ def GPTRequest(messages, is_gpt_4):
 def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
     if is_gpt_4:
         model = "gpt-4-0613"
+        price_rate_input = 0.03
+        price_rate_output = 0.06
     else:
         model = "gpt-3.5-turbo-0613"
+        price_rate_input = 0.0015
+        price_rate_output = 0.002
     messages = construct_messages_from_sections(sections)
+    prompt_tokens = num_tokens_from_messages(messages, model=model)
     response_text = ""
     if file:
         reformat_end_of_file(file)
@@ -230,9 +271,13 @@ def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
             print(chunk_text, end="")
         response_text += chunk_text
 
+    messages.append({"role": "assistant", "content": response_text})
+    total_tokens = num_tokens_from_messages(messages, model=model) - 4
+    completion_tokens = total_tokens - prompt_tokens
+    spent_cents = (prompt_tokens * price_rate_input + completion_tokens * price_rate_output) / 10
     end_time = time.time()
     if args.verbose or config.getboolean('Options', 'show_tokens'):
-        rprint(f"[dim]\[fpt] Stream request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds.")
+        rprint(f"[dim]\[fpt] Stream request finished. Model: [bold cyan]{model}[/bold cyan], api_base: [bold cyan]{openai.api_base}[/bold cyan], took [bold cyan]{end_time - start_time:.2f}[/bold cyan] seconds. Used tokens: [bold cyan]{total_tokens}[/bold cyan] ([bold cyan]{prompt_tokens}[/bold cyan] prompt + [bold cyan]{completion_tokens}[/bold cyan] response). Calculated cost: [bold cyan]{spent_cents:.2f}[/bold cyan] cents[/dim]")
     if file:
         reformat_end_of_file(file)
     return response_text

@@ -2,5 +2,5 @@ argparse
 configparser
 openai
 plyer
-pyobjus
 rich
+tiktoken
