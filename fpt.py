@@ -473,8 +473,9 @@ def headless_mode():
     config_file = os.path.join(os.getcwd(), 'fpt.conf')
     rprint('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
     while True:
-        print('> ', end='')
-        user_input = input("\033[32m")
+        sys.stdout.write("> \033[32m")
+        sys.stdout.flush()
+        user_input = input()
         print("\033[0m", end='')
         if user_input == 'q':
             if len(sections) == 0:
@@ -508,8 +509,9 @@ def interactive_mode():
     global args
     global stream
     while True:
-        print('Type the next question or command, h for help: ', end='')
-        user_input = input("\033[32m")
+        sys.stdout.write("Type the next question or command, h for help: \033[32m")
+        sys.stdout.flush()
+        user_input = input()
         print("\033[0m", end='')
         if user_input == 'h':
             print('f: read next question from file. f3 to force GPT-3.5, f4 to force GPT-4')
