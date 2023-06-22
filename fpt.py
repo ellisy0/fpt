@@ -31,19 +31,13 @@ def num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301"):
     except KeyError:
         print("Warning: model not found. Using cl100k_base encoding.")
         encoding = tiktoken.get_encoding("cl100k_base")
-    if model == "gpt-3.5-turbo":
-        print("Warning: gpt-3.5-turbo may change over time. Returning num tokens assuming gpt-3.5-turbo-0301.")
-        return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0301")
-    elif model == "gpt-3.5-turbo-16k":
+    if model == "gpt-3.5-turbo-16k":
         print("Warning: gpt-3.5-turbo-16k may change over time. Returning num tokens assuming gpt-3.5-turbo-16k-0613.")
         return num_tokens_from_messages(messages, model="gpt-3.5-turbo-16k-0613")
-    elif model == "gpt-4":
-        print("Warning: gpt-4 may change over time. Returning num tokens assuming gpt-4-0314.")
-        return num_tokens_from_messages(messages, model="gpt-4-0314")
     elif model == "gpt-3.5-turbo-0301":
         tokens_per_message = 4  # every message follows <|start|>{role/name}\n{content}<|end|>\n
         tokens_per_name = -1  # if there's a name, the role is omitted
-    elif model in {"gpt-4-0314", "gpt-4-0613", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k-0613"}:
+    elif model in {"gpt-4-0314", "gpt-4-0613", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k-0613", "gpt-4", "gpt-3.5-turbo"}:
         tokens_per_message = 3
         tokens_per_name = 1
     
@@ -213,11 +207,11 @@ def sendToGPT(sections, is_gpt_4, fail_save=False):
 def GPTRequest(messages, is_gpt_4):
     global args
     if is_gpt_4:
-        model = "gpt-4-0613"
+        model = "gpt-4"
         price_rate_input = 0.03
         price_rate_output = 0.06
     else:
-        model = "gpt-3.5-turbo-0613"
+        model = "gpt-3.5-turbo"
         price_rate_input = 0.0015
         price_rate_output = 0.002
     start_time = time.time()
@@ -239,11 +233,11 @@ def GPTRequest(messages, is_gpt_4):
 
 def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
     if is_gpt_4:
-        model = "gpt-4-0613"
+        model = "gpt-4"
         price_rate_input = 0.03
         price_rate_output = 0.06
     else:
-        model = "gpt-3.5-turbo-0613"
+        model = "gpt-3.5-turbo"
         price_rate_input = 0.0015
         price_rate_output = 0.002
     messages = construct_messages_from_sections(sections)
@@ -263,6 +257,8 @@ def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
             if not file:
                 print("")
             break
+        if "content" not in chunk["choices"][0]["delta"]:
+            continue
         chunk_text = chunk["choices"][0]["delta"]["content"]
         if file:
             with open(file, 'a') as f:
