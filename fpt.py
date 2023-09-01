@@ -288,7 +288,10 @@ def insert_gt(string):
 
 # check if a string is a markdown blockquote
 def is_md_blockquote(s):
-    for line in s.split('\n'):
+    for i, line in enumerate(s.split('\n')):
+        # also accept obsidian callout blockquote
+        if i == 0 and line == '> [!question]':
+            continue
         if not line.startswith('> '):
             return False
     return True
@@ -310,10 +313,12 @@ def remove_md_blockquote_if_present(string):
 
 # add markdown blockquote formatting to a string
 def add_md_blockquote_if_not_present(string):
+    global args
+    ob_enabled = args.obsidian
     if is_md_blockquote(string):
         return string
     else:
-        return insert_gt(string)
+        return insert_gt(string) if not ob_enabled else '> [!question]\n' + insert_gt(string)
 
 # handle the formatting at end of the file
 def reformat_end_of_file(file):
@@ -618,6 +623,7 @@ input_group.add_argument('-f', '--file', type=str, help='The file to operate on'
 input_group.add_argument('-q', '--question', type=str, help='A single question to send to GPT')
 parser.add_argument('-4', '--gpt4', action='store_true', help='Use GPT-4')
 parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+parser.add_argument('-o', '--obsidian', action='store_true', help='Save blockquotes as Obsidian callouts')
 args = parser.parse_args()
 
 # turn file path into absolute path
