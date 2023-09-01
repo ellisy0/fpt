@@ -205,13 +205,13 @@ def sendToGPT(sections, is_gpt_4, fail_save=False):
 
 # send messages to GPT and return the response
 def GPTRequest(messages, is_gpt_4):
-    global args
+    global args, gpt_4_model, gpt_3_5_model
     if is_gpt_4:
-        model = "gpt-4"
+        model = gpt_4_model
         price_rate_input = 0.03
         price_rate_output = 0.06
     else:
-        model = "gpt-3.5-turbo"
+        model = gpt_3_5_model
         price_rate_input = 0.0015
         price_rate_output = 0.002
     start_time = time.time()
@@ -232,12 +232,13 @@ def GPTRequest(messages, is_gpt_4):
     return text, prompt_tokens, completion_tokens, total_tokens
 
 def stream_to_stdout_or_file(sections, is_gpt_4, file=None):
+    global gpt_3_5_model, gpt_4_model
     if is_gpt_4:
-        model = "gpt-4"
+        model = gpt_4_model
         price_rate_input = 0.03
         price_rate_output = 0.06
     else:
-        model = "gpt-3.5-turbo"
+        model = gpt_3_5_model
         price_rate_input = 0.0015
         price_rate_output = 0.002
     messages = construct_messages_from_sections(sections)
@@ -473,10 +474,7 @@ def headless_mode():
     config_file = os.path.join(os.getcwd(), 'fpt.conf')
     rprint('Welcome to fpt! Enter your question after the > and hit enter to continue.\nEnter q to save thread to history and exit. Enter qf to save thread to a seperate file and exit.\nHistory location: {}\nqf will save to: {}\nYou can change your settings at: {}'.format(usage_history_file, target_file, config_file))
     while True:
-        sys.stdout.write("> \033[32m")
-        sys.stdout.flush()
-        user_input = input()
-        print("\033[0m", end='')
+        user_input = input("> ")
         if user_input == 'q':
             if len(sections) == 0:
                 exit()
@@ -509,10 +507,7 @@ def interactive_mode():
     global args
     global stream
     while True:
-        sys.stdout.write("Type the next question or command, h for help: \033[32m")
-        sys.stdout.flush()
-        user_input = input()
-        print("\033[0m", end='')
+        user_input = input("Type the next question or command, h for help: ")
         if user_input == 'h':
             print('f: read next question from file. f3 to force GPT-3.5, f4 to force GPT-4')
             print('r: re-generate the last response. r3 to force GPT-3.5, r4 to force GPT-4')
@@ -644,6 +639,8 @@ archive_directory = config.get('Directories', 'archive_directory')
 usage_history_file = config.get('Directories', 'usage_history_file')
 prepend_history = config.getboolean('Options', 'prepend_history')
 stream = config.getboolean('Options', 'stream')
+gpt_3_5_model = config.get('OpenAI', 'gpt_3_5_model')
+gpt_4_model = config.get('OpenAI', 'gpt_4_model')
 
 # set the API key
 openai.api_key = api_key
